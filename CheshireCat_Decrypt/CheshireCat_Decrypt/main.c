@@ -1,8 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+char readPassword();
+
 int main()
 {
-    printf("Hello world!\n");
-    return 0;
+    readPassword();
+}
+
+char readPassword(){
+   char *passd;
+   printf( "Enter the password to unlock your PC :\n");
+   passd = getchar( );
+
+   return passd;
 }
